@@ -1,26 +1,45 @@
-name: Deploy to EC2
+name: CI
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  deploy-job:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          echo -e "StrictHostKeyChecking no\n" >> ~/.ssh/config
+      - uses: actions/checkout@v2
 
       - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          HOSTNAME: ${{ secrets.HOSTNAME }}
+          USER_NAME: ${{ secrets.USER }}
+
         run: |
-          scp -o StrictHostKeyChecking=no -r . ubuntu@54.227.77.57:/home/ubuntu/
-          ssh -o StrictHostKeyChecking=no ubuntu@$54.227.77.57 'cd /home/ubuntu/node-todo-cicd_Jenkins_Docker && npm install && pm2 delete my-app || true && pm2 start npm --name "app.js" -- start'
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
+          scp -o StrictHostKeyChecking=no -i private_key -r . ${USER_NAME}@${HOSTNAME}:/home/ec2-user/
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+            DIR="/home/ubuntu/server"
+            pm2 delete all
+            cd /home/ec2-user
+
+            if [ ! -d $DIR ]; then
+              mkdir server &&
+              git clone https://github.com/Muhammad-Awab/nodebasic.git &&
+              cd nodebasic &&
+              npm install
+            else
+              cd server
+            fi
+
+            git checkout master &&
+            git fetch --all &&
+            git reset --hard origin/main &&
+            git pull origin main &&
+            pm2 start app.js
+          '
