@@ -16,11 +16,11 @@ jobs:
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          echo "${{secrets.SSH_PRIVATE_KEY}}" > ~/.ssh/id_rsa
           chmod 777 ~/.ssh/id_rsa
           echo -e "StrictHostKeyChecking no\n" >> ~/.ssh/config
 
       - name: Deploy to EC2
         run: |
-          scp -o StrictHostKeyChecking=no -r . $EC2_INSTANCE_USER@$EC2_INSTANCE_IP:/home/ubuntu/
-          ssh -o StrictHostKeyChecking=no $EC2_INSTANCE_USER@$EC2_INSTANCE_IP 'cd /home/ubuntu/node-todo-cicd_Jenkins_Docker && npm install && pm2 delete my-app || true && pm2 start npm --name "app.js" -- start'
+          scp -o StrictHostKeyChecking=no -r . ${{secrets.EC2_INSTANCE_USER}}@${{secrets.EC2_INSTANCE_IP}}:/home/ubuntu/
+          ssh -o StrictHostKeyChecking=no ${{secrets.EC2_INSTANCE_USER}}@{{secrets.$EC2_INSTANCE_IP}} 'cd /home/ubuntu/node-todo-cicd_Jenkins_Docker && npm install && pm2 delete my-app || true && pm2 start npm --name "app.js" -- start'
