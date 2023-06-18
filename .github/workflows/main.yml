@@ -26,18 +26,18 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             DIR="/home/ubuntu/server"
             pm2 delete all
-            cd /home/ec2-user
+            cd /home/ubuntu
 
             if [ ! -d $DIR ]; then
               mkdir server &&
-              git clone https://github.com/Muhammad-Awab/nodebasic.git &&
-              cd nodebasic &&
+              git clone https://github.com/Muhammad-Awab/nodebasic.git server &&
+              cd server &&
               npm install
             else
               cd server
             fi
 
-            git checkout master &&
+            git checkout main &&
             git fetch --all &&
             git reset --hard origin/main &&
             git pull origin main &&
