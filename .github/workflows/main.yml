@@ -26,7 +26,7 @@ jobs:
           
           ssh -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" -o StrictHostKeyChecking=no ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
           cd ${{ secrets.APP_DIRECTORY }}
-          npm install
-          pm2 delete my-app || true
-          pm2 restart app.js
+          sudo npm install
+          sudo pm2 delete my-app || true
+          sudo pm2 restart app.js
           EOF
