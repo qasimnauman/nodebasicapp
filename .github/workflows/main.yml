@@ -50,7 +50,13 @@ jobs:
           npm install
 
           # Restart application using PM2
-          pm2 delete my-app || true
-          pm2 restart app.js --name my-app
+          if pm2 list | grep -q my-app; then
+            pm2 restart my-app
+          else
+            pm2 start app.js --name my-app
+          fi
+
+          pm2 save  # Ensure pm2 restarts on system reboot
+          pm2 list  # Show running processes for debugging
 
           EOF
