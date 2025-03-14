@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to EC2 via Bastion
 
 on:
   push:
@@ -13,13 +13,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up SSH
+      - name: Set up SSH keys
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo -e "StrictHostKeyChecking no\n" >> ~/.ssh/config
-      - name: Deploy to EC2
+
+      - name: Deploy via Bastion
         run: |
-          scp -o StrictHostKeyChecking=no -r * ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/home/ubuntu/
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }} 'cd /home/ubuntu && npm install express && pm2 delete my-app || true && pm2 restart app.js'
+          scp -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" -o StrictHostKeyChecking=no -r * ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }}:${{ secrets.APP_DIRECTORY }}
+          
+          ssh -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" -o StrictHostKeyChecking=no ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
+          cd ${{ secrets.APP_DIRECTORY }}
+          npm install
+          pm2 delete my-app || true
+          pm2 restart app.js
+          EOF
