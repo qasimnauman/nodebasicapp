@@ -10,23 +10,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 🚀 Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up SSH keys
+      - name: 🔐 Set up SSH keys
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo -e "StrictHostKeyChecking no\n" >> ~/.ssh/config
 
-      - name: Deploy via Bastion
+      - name: 📂 Copy files to EC2 instance via Bastion
         run: |
-          scp -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" -o StrictHostKeyChecking=no -r * ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }}:${{ secrets.APP_DIRECTORY }}
-          
-          ssh -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" -o StrictHostKeyChecking=no ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
+          scp -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" \
+              -o StrictHostKeyChecking=no -r * \
+              ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }}:${{ secrets.APP_DIRECTORY }}
+
+      - name: 🛠 Run deployment commands on EC2
+        run: |
+          ssh -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.EC2_INSTANCE_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
+
+          # Load nvm properly
+          export NVM_DIR="/home/ubuntu/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+          # Ensure npm and pm2 are available
+          export PATH=$NVM_DIR/versions/node/v22.14.0/bin:$PATH
+
+          # Navigate to application directory
           cd ${{ secrets.APP_DIRECTORY }}
-          sudo npm install
-          sudo pm2 delete my-app || true
-          sudo pm2 restart app.js
+
+          # Ensure correct permissions
+          sudo chown -R ${{ secrets.EC2_INSTANCE_USER }}:${{ secrets.EC2_INSTANCE_USER }} ${{ secrets.APP_DIRECTORY }}
+
+          # Install dependencies
+          npm install
+
+          # Restart application using PM2
+          pm2 delete my-app || true
+          pm2 restart app.js --name my-app
+
           EOF
